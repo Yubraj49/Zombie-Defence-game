@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zombie Defence</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui-layer">
+        <div id="hud">
+            <div class="stat-box">
+                <div class="stat">❤️ <span id="lives-display">20</span></div>
+                <div class="stat">💰 <span id="money-display">150</span></div>
+                <div class="stat">🧟 Wave: <span id="wave-display">1</span></div>
+                <div class="stat">🗺️ Map: <span id="map-display">1</span></div>
+            </div>
+            <div id="wave-progress-container">
+                <div id="wave-track">
+                    <div id="wave-fill"></div>
+                </div>
+                <div id="wave-markers">
+                    </div>
+            </div>
+            <div id="controls">
+                <button id="exit-btn" onclick="requestExit()" style="background: #c0392b; margin-right: 5px;">Exit</button>
+                <button id="mute-btn" onclick="toggleSound()">🔊</button>
+                <button id="speed-btn" class="speed-btn" onclick="toggleSpeed()">1x</button>
+                <button id="start-wave-btn" class="start-wave">Start Wave</button>
+            </div>
+        </div>
+
+        <div id="continue-modal" class="modal hidden">
+            <h1 style="color:#3498db;">Save Found</h1>
+            <p>Do you want to continue from Map <span id="save-map-num">0</span> Wave <span id="save-wave-num">0</span>?</p>
+            <div style="display:flex; gap:20px;">
+                <button class="modal-btn" onclick="loadGame()">Yes, Continue</button>
+                <button class="modal-btn" style="background:#c0392b;" onclick="startNewGameFromModal()">No, New Game</button>
+            </div>
+        </div>
+
+        <div id="patch-notes-modal" class="modal hidden" style="z-index: 200;">
+            <h1 style="color:#e67e22;">UPDATE <span id="pn-version">v3.2</span></h1>
+            <div id="pn-content" style="text-align: left; max-width: 500px; margin-bottom: 20px; line-height: 1.5; color: #ddd; max-height: 300px; overflow-y: auto;"></div>
+            <button class="modal-btn" onclick="closePatchNotes()">Awesome!</button>
+        </div>
+
+        <div id="notification">Notification Text</div>
+
+        <div id="mobile-confirm" class="hidden">
+            <button class="confirm-btn btn-yes" onclick="confirmPlacement()">✓</button>
+            <button class="confirm-btn btn-no" onclick="cancelPlacement()">✗</button>
+        </div>
+
+        <div id="upgrade-panel">
+            <div class="panel-header">
+                <div class="panel-title" id="upg-title">Tower</div>
+                <div style="font-size: 12px; color: #aaa;">Kills: <span id="upg-kills" style="color:white">0</span></div>
+            </div>
+            <div class="panel-stats">
+                <div class="stat-row">Dmg: <span class="stat-val" id="upg-dmg">10</span></div>
+                <div class="stat-row">Rng: <span class="stat-val" id="upg-rng">150</span></div>
+                <div class="stat-row">Spd: <span class="stat-val" id="upg-spd">Fast</span></div>
+                <div class="stat-row">Type: <span class="stat-val" id="upg-type">Normal</span></div>
+            </div>
+            
+            <button id="upgrade-action-btn" class="upgrade-btn" onclick="upgradeSelectedTower()">
+                <span class="upgrade-name">Upgrade Name</span>
+                <span class="upgrade-cost">$150</span>
+                <span class="upgrade-desc">Description of the upgrade.</span>
+            </button>
+            
+            <button class="sell-btn" onclick="sellSelectedTower()">Sell ($<span id="sell-price">50</span>)</button>
+        </div>
+
+        <div id="tower-palette">
+            <div id="palette-toggle" onclick="togglePalette()">▼</div>
+            <div id="palette-container" style="display:flex; gap:10px;">
+            </div>
+        </div>
+
+        <div id="start-screen" class="modal">
+            <h1 style="color:#f1c40f; text-shadow: 0 0 20px rgba(241,196,15,0.5);">Zombie Defence</h1>
+            <p style="color:#aaa; font-style:italic;">Command. Defend. Survive.</p>
+            
+            <button class="modal-btn" onclick="openCampaignMenu()">Campaign</button>
+            
+            <button class="modal-btn skip-btn" style="background: #7f8c8d; font-size: 14px; margin-top: 30px;" onclick="resetProgress()">Reset Progress</button>
+        </div>
+
+        <div id="campaign-screen" class="modal hidden" style="background: rgba(10, 10, 15, 0.95);">
+            <h1 style="margin-bottom: 0;">Mission Select</h1>
+            
+            <div style="position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 5px;">
+                <button id="unlock-btn" onclick="requestUnlock()" style="background: transparent; border: 1px solid #555; font-size: 10px; padding: 5px 10px; color: #888;">
+                    🔓 Unlock All
+                </button>
+                
+                <button id="unlock-confirm-btn" onclick="confirmUnlock()" style="
+                    background: #2ecc71; 
+                    border: none; 
+                    color: white; 
+                    font-size: 10px; 
+                    padding: 5px 8px; 
+                    border-radius: 4px;
+                    width: 0; 
+                    overflow: hidden; 
+                    padding: 0; 
+                    opacity: 0;
+                    transition: all 0.3s ease;
+                    white-space: nowrap;
+                    cursor: pointer;">
+                    ✓
+                </button>
+            </div>
+
+            <div class="campaign-map-container">
+                <svg class="campaign-path" width="600" height="400">
+                    <path d="M 70 300 Q 100 100 230 100" stroke="#555" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="10, 10" id="path-1-2" />
+                    <path d="M 230 100 Q 380 100 380 300" stroke="#555" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="10, 10" id="path-2-3" />
+                    <path d="M 380 300 Q 500 300 530 100" stroke="#555" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="10, 10" id="path-3-4" />
+                </svg>
+
+                <div class="map-node locked" id="node-1" onclick="selectCampaignMap(1)" style="position: absolute; left: 40px; top: 270px;">
+                    <div class="node-icon" style="background: #27ae60;">🌿</div>
+                    <div class="node-label">Grasslands</div>
+                </div>
+
+                <div class="map-node locked" id="node-2" onclick="selectCampaignMap(2)" style="position: absolute; left: 200px; top: 70px;">
+                    <div class="node-icon" style="background: #2c3e50;">🪦</div>
+                    <div class="node-label">Cemetery</div>
+                </div>
+
+                <div class="map-node locked" id="node-3" onclick="selectCampaignMap(3)" style="position: absolute; left: 350px; top: 270px;">
+                    <div class="node-icon" style="background: #bdc3c7; color:#333;">🧪</div>
+                    <div class="node-label">The Lab</div>
+                </div>
+
+                <div class="map-node locked" id="node-4" onclick="selectCampaignMap(4)" style="position: absolute; left: 500px; top: 70px;">
+                    <div class="node-icon" style="background: #d35400;">🏜️</div>
+                    <div class="node-label">Canyon</div>
+                </div>
+            </div>
+
+            <button class="modal-btn" style="margin-top: 20px; background: #c0392b;" onclick="backToTitle()">Back</button>
+        </div>
+
+        <div id="exit-confirm-modal" class="modal hidden" style="z-index: 200;">
+            <h1>Quit Game?</h1>
+            <p>Return to Main Menu?</p>
+            <div style="display:flex; gap:20px;">
+                <button class="modal-btn btn-yes" onclick="confirmExit()">Yes, Quit</button>
+                <button class="modal-btn btn-no" onclick="cancelExit()" style="background:#7f8c8d;">Cancel</button>
+            </div>
+        </div>
+
+        <div id="game-over-screen" class="modal hidden">
+            <h1>Game Over</h1>
+            <p>The zombies ate your brains.</p>
+            <button class="modal-btn" onclick="resetGame(gameState.mapLevel)">Try Again</button>
+        </div>
+        
+        <div id="victory-screen" class="modal hidden">
+            <h1 style="color:#2ecc71;">Map Cleared!</h1>
+            <p>You survived all waves!</p>
+            <button id="next-map-btn" class="modal-btn" onclick="returnToCampaignFromVictory()">Continue</button>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
